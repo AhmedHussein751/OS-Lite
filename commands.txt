@@ -1,0 +1,3 @@
+nasm -f bin boo2.asm -o boot1.bin
+dd if=/home/ahmed/boot1.bin of=./disk.img conv=notrunc
+
