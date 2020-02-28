@@ -1,3 +1,5 @@
+truncate disk.img -s 1024k
+mkfs.vfat -F12 -S512 -s1 disk.img
+sudo mount disk.img /mnt
 nasm -f bin boo2.asm -o boot1.bin
 dd if=/home/ahmed/boot1.bin of=./disk.img conv=notrunc
-
