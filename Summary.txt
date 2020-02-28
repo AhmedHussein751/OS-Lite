@@ -27,7 +27,7 @@ This interrupt is executed by the BIOS. It reads the first sector (Sector 1, Hea
  
 - The bootloader is loaded by the BIOS at absolute address 0x7c00:0. After loading, CS:IP is set to your bootloader, and the bootloader takes full control.
 
-- Real Mode: Uses the native segment:offset memory model, limited to 64k of memory and no virtual memory or memory protection. where "Absolute Memory Address = (Segment Address * 16(decimal)) + Offset" and Memory Segmentation Registers:
+- Real Mode: Uses the native segment:offset memory model, limited to 64k of memory and no virtual memory or memory protection. CPU Registers are accessible in this mode. "Absolute Memory Address = (Segment Address * 16(decimal)) + Offset" and Memory Segmentation Registers:
     CS (Code Segment) - Stores base segment address for code
     DS (Data Segment) - Stores base segment address for data
     ES (Extra Segment) - Stores base segment address for anything
@@ -139,6 +139,131 @@ bsFileSystem: 	        DB "FAT12   "        ; 8 Bytes Max
     Bytes 24-25 : Last modified date (See bytes 16-17 for format)
     Bytes 26-27 : First Cluster
     Bytes 28-32 : File Size
+
+- The system bus is also known as the Front Side Bus that communicates with the north bridge in the motherboard. The System Bus is a combination of the Data Bus, Address Bus, and Control Bus.
+
+- The Memory Controller is the primary interface between the System Bus (ak, Front Side Bus(FSB) ) on the motherboard to the physical RAM chips. 
+
+- A DDR Controller is used to refresh DDR SDRAM, which uses the System Clock pulse to allow reading and writing memory. 
+
+- A Dual Channel Controller are used where DRAM devices are seperated into two small busses, allowing reading and writing two memory locations at once. This helps increasing speed when accessing RAM. 
+
+- A Port simply provides an interface between two devices. There are two types of ports: Hardware Ports and Software Ports:
+1) A Hardware Port provides the interface between two physical devices. This port is usually a connection device of sorts. This includes, but is not limited to: Serial Ports, Parallel ports, PS/2 Ports, 1394, FireWire, USB Ports, etc.
+2) A Software Port is a number representing hardware. The basic idea is that we communicate to hardware by specifying certain memory addresses. The port number represents this address
+
+- x86 Real Mode Memory Map: 
+    0x00000000 - 0x000003FF - Real Mode Interrupt Vector Table
+    0x00000400 - 0x000004FF - BIOS Data Area
+    0x00000500 - 0x00007BFF - Unused
+    0x00007C00 - 0x00007DFF - Our Bootloader
+    0x00007E00 - 0x0009FFFF - Unused
+    0x000A0000 - 0x000BFFFF - Video RAM (VRAM) Memory
+    0x000B0000 - 0x000B7777 - Monochrome Video Memory
+    0x000B8000 - 0x000BFFFF - Color Video Memory
+    0x000C0000 - 0x000C7FFF - Video ROM BIOS
+    0x000C8000 - 0x000EFFFF - BIOS Shadow Area
+    0x000F0000 - 0x000FFFFF - System BIOS
+
+- How does the processor differenate between writing memory and accessing a controller?
+	The processor sets another line on the control bus--An I/O ACCESS line. If this line is set, The I/O Controllers from within the I/O SubSystem watches the Address Bus. If the Address Bus currosponds to a number that is assigned to the device, that device takes the value from the data bus and acts upon it. The Memory Controller ignores any request if this line is set. So, if the port number has not been assigned, absolutely nothing happens. No controller acts on it, and the Memory Controller ignores it. 
+
+- IN and OUT Instructions: The x86 processor has two instructions used for port I/O. They are IN and OUT. These instructions tell the processor that we want to communicate to a device. This insures the processor sets the I/O DEVICE line on the control bus. 
+
+- Port mapping and Port I/O are very important. It is our only way of cummunicating with hardware in protected mode. The other way is interrupts and is available only in Real Mode.
+
+- General Purpose Registers:
+These are 32 bit registers that can be used for almost any purpose. They can be used within any program, from Ring 0 to Ring 4 Each of these registers have a special purpose as well:
+    EAX - Accumlator Register. Primary purpose: Math calculations
+    EBX - Base Address Register. Primary purpose: Indirectly access memory through a base address.
+    ECX - Counter Register. Primary purpose: Use in counting and looping.
+    EDX - Data Register. Primary purpose: um... store data. Yep, thats about it 
+
+- Segment Registers
+The segment registers modify the current segment addresses in real mode. They are all 16 bit.
+    CS - Segment address of code segment
+    DS - Segment address of data segment
+    ES - Segment address of extra segment
+    SS - Segment address of stack segment
+    FS - Far Segment address
+    GS - General Purpose Register
+
+- Index Registers
+The x86 uses several registers that help when access memory.
+    SI - Source Index
+    DI - Destination Index
+    BP - Base Pointer
+    SP - Stack Pointer
+Each of these registers store a 16 bit base address (that may be used as an offset address as well.) 
+
+- Instruction Pointer / Program Counter
+The Instruction Pointer (IP) register stores the current offset address of the currently exectuting instruction
+
+-Instruction Register
+This is an internal processor register that cannot be accessed through normal means. It is stored within the Control Unit (CU) of the processor inside the Instruction Cache. It stores the current instruction that is being translated to Microinstructions for use internally by the processor.
+
+- Control Registers
+The control registers allow us to change the behavior of the processor. They are: CR0, CR1, CR2, CR3, CR4. 
+1) CR0 Control Register:
+    Bit 0 (PE) : Puts the system into protected mode
+    Bit 1 (MP) : Monitor Coprocessor Flag This controls the operation of the WAIT instruction.
+    Bit 2 (EM) : Emulate Flag. When set, coprocessor instructions will generate an exception
+    Bit 3 (TS) : Task Switched Flag This will be set when the processor switches to another task.
+    Bit 4 (ET) : ExtensionType Flag. This tells us what type of coprocesor is installed.
+        0 - 80287 is installed
+        1 - 80387 is installed.
+    Bit 5 (NE): Numeric Error
+        0 - Enable standard error reporting
+        1 - Enable internal x87 FPU error reporting
+    Bits 6-15 : Unused
+    Bit 16 (WP): Write Protect
+    Bit 17: Unused
+    Bit 18 (AM): Alignment Mask
+        0 - Alignment Check Disable
+        1 - Alignment Check Enabled (Also requires AC flag set in EFLAGS and ring 3)
+    Bits 19-28: Unused
+    Bit 29 (NW): Not Write-Through
+    Bit 30 (CD): Cache Disable
+    Bit 31 (PG) : Enables Memory Paging.
+        0 - Disable
+        1 - Enabled and use CR3 register
+
+2) CR1 Control Register
+Reserved by Intel, do not use. 
+3) CR2 Control Register
+Page Fault Linear Address. If a Page Fault Exception accures, CR2 contains the address that was attempted accessed 
+4) CR3 Control Register
+Used when the PG bit in CR0 is set. Last 20 bits Contains the Page Directory Base Register (PDBR) 
+5) Used in protected mode to control operations, such as v8086 mode, enabling I/O breakpoints, Page size extension and machine check exceptions
+    Bit 0 (VME) : Enables Virtual 8086 Mode Extensions
+    Bit 1 (PVI) : Enables Protected Mode Virtual Interrupts
+    Bit 2 (TSD) : Time Stamp Enable
+        0 - RDTSC instruction can be used in any privilege level
+        1 - RDTSC instruction can only be used in ring 0
+    Bit 3 (DE) : Enable Debugging Extensions
+    Bit 4 (PSE) : Page Size Extension
+        0 - Page size is 4KB
+        1 - Page size is 4MB. With PAE, it is 2MB.
+    Bit 5 (PAE) : Physical Address Extension
+    Bits 6 (MCE) : Machine Check Exception
+    Bits 7 (PGE) : Page Global Enable
+    Bits 8 (PCE) : Performance Monitoring Counter Enable
+        0 - RDPMC instruction can be used in any privilege level
+        1 - RDPMC instruction can only be used in ring 0
+    Bits 9 (OSFXSR) : OS Support for FXSAVE and FXSTOR instructions (SSE)
+    Bits 10 (OSXMMEXCPT) : OS Support for unmasked SIMD FPU exceptions
+    Bits 11-12 : Unused
+    Bits 13 (VMXE) : VMX Enable
+6) CR8 Control Register
+Provides Read and Write access to the Task Prority Register (TPR)
+
+- PMode Segmentation Registers
+The x86 family uses several registers to store the current linear address of each Segment Descriptor.
+These registers are:
+    GDTR - Global Descriptor Table Register
+    IDTR - Interrupt Descriptor Table Register
+    GDTR - Local Descriptor Table Register
+    TR - Task Register
 
 
  
