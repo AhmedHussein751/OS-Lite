@@ -38,7 +38,7 @@ msg	db	"Welcome to My Operating System!", 0
 ;***************************************
 
 Print:
-			lodsb                           ; load next byte of msg
+			lodsb                                                   ; load next byte of msg
 			or			al, al				; al=current character
 			jz			PrintDone			; null terminator found
 			mov			ah,	0eh			; get next character

@@ -6,7 +6,7 @@
 
 org 0x7c00 ; tell nasm this code is executed at address 0x7c00
 
-bits 16
+bits 16 ; We are in 16 bits real mode
 
 
 xor	ax, ax		; Setup segments to insure they are 0. Remember that

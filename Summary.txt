@@ -1,0 +1,145 @@
+- When the Power Supply Unit (PSU) receives the activate signal, it begins supplying power to the rest of the system. When the correct amount of power is supplied to all devices, the PSU will be able to continue supplying that power without any major problems.
+
+- The PSU then sends a signal, called the "power_good" signal into the motherboard to the Basic Input Output System (BIOS)
+
+- the BIOS begins initializing a process called POST (Power On Self Test). The POST then tests to insure there is good amount of power being supplied, the devices installed (such as keyboard, mouse, USB, serial ports, etc.), and insures the memory is good (By testing for memory curruption).
+
+- The POST then gives control to the BIOS. The POST loads the BIOS at the end of memory (Might be 0xFFFFF0) and puts a jump instruction at the first byte in memory. 
+
+- The processors Instruction Pointer (CS:IP) is set to 0, and the processor takes control. 
+
+-  The processor starts executing instructions at address 0x0. In this case, it is the jump instruction placed by the POST. This jump instruction jumps to 0xFFFFF0 (or wherever the BIOS was loaded), and the processor starts executing the BIOS. 
+
+- The Basic Input Output System (BIOS) creates an Interrupt Vector Table (IVT), and provides some basic interrupt services. The BIOS then does some more tests to insure there is no hardware problems. The BIOS also supplies a Setup utility.
+
+- A common interrupts, for example, is INT 0x21 used for DOS.
+Note: There is no DOS! The *Only* interrupts available are the interrupts set up by the BIOS, and no more! The use of other interrupts will cause the system to execute a nonexistant routine, causing your program to crash. 
+
+-  The BIOS then needs to find an OS. Based on the boot order that you set in the BIOS Setup, the BIOS will execute Interrupt (INT) 0x19 to attempt to find a bootable device. If no bootable device is found (INT 0x19 returns), the BIOS goes on to the next device listed in the boot order. If there is no more devices, it will print an error simular to "No Operating System found" and halt the system.
+
+- INT 0x19 - SYSTEM: BOOTSTRAP LOADER
+Reboots the system through a Warm Reboot (process of aborting and reloading OS) without clearing memory or restoring the Interrupt Vector Table (IVT).
+This interrupt is executed by the BIOS. It reads the first sector (Sector 1, Head 0, Track 0) of the first hard disk (512 bytes).If the disk is bootable, Then the bootsector will be loaded at 0x7C00, and INT 0x19 will jump to it, therby giving control to the bootloader. 
+
+- If the processor finds a problem during execution (Such as an invalid instruction, division by 0, etc.) It executes a Second Fault Exception Handler (Double Fault), Which is Interrupt 0x8.
+
+- Triple Fault: A CPU that "Triple Faults" simply means the system hard reboots.
+ 
+- The bootloader is loaded by the BIOS at absolute address 0x7c00:0. After loading, CS:IP is set to your bootloader, and the bootloader takes full control.
+
+- Real Mode: Uses the native segment:offset memory model, limited to 64k of memory and no virtual memory or memory protection. where "Absolute Memory Address = (Segment Address * 16(decimal)) + Offset" and Memory Segmentation Registers:
+    CS (Code Segment) - Stores base segment address for code
+    DS (Data Segment) - Stores base segment address for data
+    ES (Extra Segment) - Stores base segment address for anything
+    SS (Stack Segment) - Stores base segment address for the stack
+
+- Protected Mode: 32 bit processor mode, allows memory protection through the use of descriptor tables.
+
+- Unreal Mode: Real Mode with address space of Protected Mode (The whole 4 GB).
+
+- Virtual Mode: Protected mode with 16 bit real mode to allow for BIOS interrupts that are only avaliable in real mode.
+
+-  INT 0x10 - VIDEO TELETYPE OUTPUT
+AH = 0x0E
+AL = Character to write
+BH - Page Number (Should be 0)
+BL = Foreground color (Graphics Modes Only)
+
+
+- Rings Theory: A "Ring" in assembly represents the level of protection and control the program has over the system. There are four rings: Ring 0, Ring 1, Ring 2 and Ring 3 where Ring 0 has the absolute control and Ring 3 has the least control.
+
+- BIOS INT 0x13, Function 0 to reset the floppy drive. What this means is, wherever the Floppy Controller is reading from, it will immediately go to the first Sector on disk.
+   INT 0x13/AH=0x0 - DISK : RESET DISK SYSTEM
+   AH = 0x0
+   DL = Drive to Reset
+
+- BIOS Interrupt (INT) 0x13 Function 0x02 - Reading Sectors
+   INT 0x13/AH=0x02 - DISK : READ SECTOR(S) INTO MEMORY
+   AH = 0x02
+   AL = Number of sectors to read
+   CH = Low eight bits of cylinder number (track)
+   CL = Sector Number (Bits 0-5). Bits 6-7 are for hard disks only
+   DH = Head Number
+   DL = Drive Number (Bit 7 set for hard disks)
+   ES:BX = Buffer to read sectors to
+
+- floppy -> 80 tracks per side -> 18 sectors/tracks -> each sector 512 byte -> two heads
+
+- OEM Parameter Block
+
+bpbBytesPerSector:  	DW 512               ; Bytes Per Sector
+bpbSectorsPerCluster: 	DB 1                 ; Sectors Per Cluster
+bpbReservedSectors: 	DW 1                 ; Number of sectors outside of FAT
+bpbNumberOfFATs: 	DB 2                 ; FAT12 has two 2 FATS
+bpbRootEntries: 	DW 224               ; Max 224 directories within root directory
+bpbTotalSectors: 	DW 2880              ; Total Number Of Sectors
+bpbMedia: 	        DB 0xF0              ; 
+                                             ; Bits 0: Sides/Heads = 0 if it is single sided, 1 if its double sided
+                                             ; Bits 1: Size = 0 if it has 9 sectors per FAT, 1 if it has 8.
+                                             ; Bits 2: Density = 0 if it has 80 tracks, 1 if it is 40 tracks.
+                                             ; Bits 3: Type = 0 if its a fixed disk (Such as hard drive), 1 if removable (Such as floppy drive)
+                                             ; Bits 4 to 7 are unused, and always 1. 
+bpbSectorsPerFAT: 	DW 9                 ; Sectors Per FAT
+bpbSectorsPerTrack: 	DW 18                ; Sectors Per Track
+bpbHeadsPerCylinder: 	DW 2                 ; 2 HEADs Per Cylinder
+bpbHiddenSectors: 	DD 0                 ; Number of sectors from start of physical disk till start of the volume
+bpbTotalSectorsBig:     DD 0                 ; 
+bsDriveNumber: 	        DB 0                 ; Drive 0 
+bsUnused: 	        DB 0
+bsExtBootSignature: 	DB 0x29              ; Type and version of BIOS Parameter Block ( MS/PC-DOS version 4.0)
+bsSerialNumber:	        DD 0xa0a1a2a3
+bsVolumeLabel: 	        DB "MOS FLOPPY "     ; 11 Bytes Max
+bsFileSystem: 	        DB "FAT12   "        ; 8 Bytes Max
+
+- hlt without cli can cause triple fault as the interrupt can still occur while the cpu is haulted.
+
+- Filesystem -> helps create the concept of file in a disk.
+
+- Cluster -> span of sectors.
+
+- FAT12:
+1) No hierarchial directories -> only Root Directory.
+2) Cluster addresses limited to 12 bits.
+3) Filenames is 12 bits identifier 
+4) Disk size is 16 bit count of sectors.
+5) Uses the value "0x01" to identify partitions.
+6) Disk Storage: Boot Sector - Extra Reserved Sectors - File Allocation Table 1 - File Allocation Table 2 - Root Directory (FAT12/FAT16 Only) - Data Region containing files and directories.
+7) FAT is an array of 12 bits entries: 
+    Value marks free cluster : 0x000
+    Value marks Reserved cluster : 0x001
+    This cluster is in use--the value represents next cluster : 0x002 through 0xFEF
+    Reserved values : 0xFF0 through 0xFF6
+    Value marks bad clusters : 0xFF7
+    Value marks this cluster as the last in the file : 0xFF8 through 0xFFF
+8) Root Directory is an array of 32 bytes values:
+    Bytes 0-7 : DOS File name (Padded with spaces)
+    Bytes 8-10 : DOS File extension (Padded with spaces)
+    Bytes 11 : File attributes. This is a bit pattern:
+        Bit 0 : Read Only
+        Bit 1 : Hidden
+        Bit 2 : System
+        Bit 3 : Volume Label
+        Bit 4 : This is a subdirectory
+        Bit 5 : Archive
+        Bit 6 : Device (Internal use)
+        Bit 6 : Unused
+    Bytes 12 : Unused
+    Bytes 13 : Create time in ms
+    Bytes 14-15 : Created time, using the following format:
+        Bit 0-4 : Seconds (0-29)
+        Bit 5-10 : Minutes (0-59)
+        Bit 11-15 : Hours (0-23)
+    Bytes 16-17 : Created year in the following format:
+        Bit 0-4 : Year (0=1980; 127=2107
+        Bit 5-8 : Month (1=January; 12=December)
+        Bit 9-15 : Hours (0-23)
+    Bytes 18-19 : Last access date (Uses same format as above)
+    Bytes 20-21 : EA Index (Used in OS/2 and NT, dont worry about it)
+    Bytes 22-23 : Last Modified time (See byte 14-15 for format)
+    Bytes 24-25 : Last modified date (See bytes 16-17 for format)
+    Bytes 26-27 : First Cluster
+    Bytes 28-32 : File Size
+
+
+ 
+
